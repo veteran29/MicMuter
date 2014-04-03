@@ -1,0 +1,20 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MicMuter2", "MicMuter2\MicMuter2.vcxproj", "{553FC35D-8B40-4CE9-9B11-A83D2375FE2A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{553FC35D-8B40-4CE9-9B11-A83D2375FE2A}.Debug|Win32.ActiveCfg = Release|Win32
+		{553FC35D-8B40-4CE9-9B11-A83D2375FE2A}.Debug|Win32.Build.0 = Release|Win32
+		{553FC35D-8B40-4CE9-9B11-A83D2375FE2A}.Release|Win32.ActiveCfg = Release|Win32
+		{553FC35D-8B40-4CE9-9B11-A83D2375FE2A}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
