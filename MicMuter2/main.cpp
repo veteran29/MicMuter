@@ -1,86 +1,30 @@
-//#define _DEBUG
-#ifdef _DEBUG
-	#include <io.h>
-	#include <fcntl.h>
-#endif
+#include <windows.h>
+#include <shellapi.h>
+#include <stdlib.h>
+#include <string.h>
+#include <tchar.h>
 
-#include "resource.h"
-#include "stdafx.h"
+#include "microphone.h"
 
-#include <string>
-#include <iostream>
-#include <functiondiscoverykeys.h>
-#include <EndpointVolume.h>
+#define MAX 100
+#define	WM_USER_SHELLICON WM_USER + 1
 
-//
-const wchar_t *mute_it=L"Microphone";
-//
+// global Variables:
+BOOL bDisable = FALSE;							// keep microphone state
+HINSTANCE hInst;	// current instance
+NOTIFYICONDATA nid;
+HMENU hPopMenu;
+TCHAR szTitle[MAX]= _T("Mic Muter");					// The title bar text
+TCHAR szWindowClass[MAX]= _T("Mic Muter");;		// the main window class name
+TCHAR szApplicationToolTip[MAX]=_T("Mic Muter");	    // the main window class name
 
-//  Retrieves the device friendly name for device in a device collection
-LPWSTR GetDeviceName(IMMDeviceCollection *DeviceCollection, UINT DeviceIndex)
-{
-    IMMDevice *device;
-    LPWSTR deviceId;
-    HRESULT hr;
+// forward declarations of functions
+ATOM				CustomRegisterClass(HINSTANCE hInstance);
+BOOL				InitInstance(HINSTANCE, int);
+LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 
-    hr = DeviceCollection->Item(DeviceIndex, &device);
-    if (FAILED(hr))
-    {
-        printf("Unable to get device %d: %x\n", DeviceIndex, hr);
-        return NULL;
-    }
-    hr = device->GetId(&deviceId);
-    if (FAILED(hr))
-    {
-        printf("Unable to get device %d id: %x\n", DeviceIndex, hr);
-        return NULL;
-    }
-
-    IPropertyStore *propertyStore;
-    hr = device->OpenPropertyStore(STGM_READ, &propertyStore);
-    SafeRelease(&device);
-    if (FAILED(hr))
-    {
-        printf("Unable to open device %d property store: %x\n", DeviceIndex, hr);
-        return NULL;
-    }
-
-    PROPVARIANT friendlyName;
-    PropVariantInit(&friendlyName);
-    hr = propertyStore->GetValue(PKEY_Device_FriendlyName, &friendlyName);
-    SafeRelease(&propertyStore);
-
-    if (FAILED(hr))
-    {
-        printf("Unable to retrieve friendly name for device %d : %x\n", DeviceIndex, hr);
-        return NULL;
-    }
-
-    wchar_t deviceName[128];
-    hr = StringCbPrintf(deviceName, sizeof(deviceName), L"%s (%s)", friendlyName.vt != VT_LPWSTR ? L"Unknown" : friendlyName.pwszVal, deviceId);
-    if (FAILED(hr))
-    {
-        printf("Unable to format friendly name for device %d : %x\n", DeviceIndex, hr);
-        return NULL;
-    }
-
-    PropVariantClear(&friendlyName);
-    CoTaskMemFree(deviceId);
-
-    wchar_t *returnValue = _wcsdup(deviceName);
-    if (returnValue == NULL)
-    {
-        printf("Unable to allocate buffer for return\n");
-        return NULL;
-    }
-    return returnValue;
-}
-
-
-int WINAPI WinMain(HINSTANCE hInstance,
-            HINSTANCE hPrevInstance,
-            LPSTR    lpCmdLine,
-            int       ncmdShow)
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
 	#ifdef _DEBUG
 	//console for debbuging
@@ -99,138 +43,150 @@ int WINAPI WinMain(HINSTANCE hInstance,
 		*stdin = *hf_in;
 	#endif
 
-    HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
-    if (FAILED(hr))
+
+
+	MSG msg;
+
+	CustomRegisterClass(hInstance);
+
+	if (!InitInstance (hInstance, nCmdShow))
+	{
+		return FALSE;
+	}
+
+	// main message loop
+	while (GetMessage(&msg, NULL, 0, 0))
     {
-        printf("Unable to initialize COM: %x\n", hr);
-        goto Exit;
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
     }
+    return (int) msg.wParam;
+}
 
-    IMMDeviceEnumerator *deviceEnumerator = NULL;
+ATOM CustomRegisterClass(HINSTANCE hInstance)
+{
+	WNDCLASSEX wcex;
 
-	//initialize device enumerator
-    hr = CoCreateInstance( __uuidof(MMDeviceEnumerator), NULL, CLSCTX_INPROC_SERVER, 
-		                   IID_PPV_ARGS(&deviceEnumerator) );
-    if (FAILED(hr))
+    wcex.cbSize = sizeof(WNDCLASSEX);
+    wcex.style          = CS_HREDRAW | CS_VREDRAW;
+    wcex.lpfnWndProc    = WndProc;
+    wcex.cbClsExtra     = 0;
+    wcex.cbWndExtra     = 0;
+    wcex.hInstance      = hInstance;
+    wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_APPLICATION));
+    wcex.hCursor        = LoadCursor(NULL, IDC_ARROW);
+    wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
+    wcex.lpszMenuName   = NULL;
+    wcex.lpszClassName  = szWindowClass;
+    wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_APPLICATION));
+
+	return RegisterClassEx(&wcex);
+}
+
+BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
+{
+   HWND hWnd;
+   HICON hMainIcon;
+
+   hInst = hInstance; // Store instance handle in our global variable
+
+   hWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, NULL, NULL, hInstance, NULL);
+
+   if (!hWnd)
+   {
+      return FALSE;
+   }
+
+   hMainIcon = LoadIcon(NULL, IDI_APPLICATION);//LoadIcon(hInstance,(LPCTSTR)MAKEINTRESOURCE(IDI_SYSTRAYDEMO)); 
+   
+   nid.cbSize = sizeof(NOTIFYICONDATA); // sizeof the struct in bytes 
+   nid.hWnd = (HWND) hWnd;              //handle of the window which will process this app. messages 
+   nid.uID = 100;           //ID of the icon that willl appear in the system tray 
+   nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP; //ORing of all the flags 
+   nid.hIcon = hMainIcon; // handle of the Icon to be displayed, obtained from LoadIcon 
+   nid.uCallbackMessage = WM_USER_SHELLICON; 
+   wcscpy_s(nid.szTip, L"Microphone");
+   Shell_NotifyIcon(NIM_ADD, &nid); 
+
+   return TRUE;
+}
+
+LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	int wmId, wmEvent;
+	POINT lpClickPoint;
+
+    switch (message)
     {
-        printf("Unable to instantiate device enumerator: %x\n", hr);
-        goto Exit;
-    }
+    case WM_CREATE:
+         break;
 
+    case WM_USER_SHELLICON:
+         switch(lParam)
+         {
+         case WM_LBUTTONDBLCLK:
+			 {
+                 MessageBox(NULL, L"Tray icon double clicked!", L"clicked", MB_OK);
+			 }
+             break;
 
-	IMMDeviceCollection *deviceCollection = NULL;
-	
-	//Here we enumerate the audio endpoints of interest (in this case audio capture endpoints)
-	//into our device collection. We use "eCapture" for audio capture endpoints, "eRender" for 
-	//audio output endpoints and "eAll" for all audio endpoints 
-    hr = deviceEnumerator->EnumAudioEndpoints( eCapture, DEVICE_STATE_ACTIVE, 
-		                                       &deviceCollection );
-    if (FAILED(hr))
-    {
-        printf("Unable to retrieve device collection: %x\n", hr);
-        goto Exit;
-    }
-
-
-    UINT deviceCount;
-
-    hr = deviceCollection->GetCount(&deviceCount);
-    if (FAILED(hr))
-    {
-        printf("Unable to get device collection length: %x\n", hr);
-        goto Exit;
-    }
-
-
-	IMMDevice *device = NULL;
-	
-	//
-	//This loop goes over each audio endpoint in our device collection,
-	//gets and diplays its friendly name and then tries to mute it
-	//
-    for (UINT i = 0 ; i < deviceCount ; i += 1)
-    {
-		LPWSTR deviceName;
-
-		//Here we use the GetDeviceName() function provided with the sample 
-		//(see source code zip)
-		deviceName = GetDeviceName(deviceCollection, i); //Get device friendly name
-
-		if (deviceName == NULL) goto Exit;
-		if ( wcscmp(deviceName, mute_it) != 1 )
-		{
-			printf("Skipped device has index: %d and name: %S\n", i, deviceName);
-			continue;
-		}
-		
-		printf("Device to be muted has index: %d and name: %S\n", i, deviceName);
-
-		free(deviceName); //this needs to be done because name is stored in a heap allocated buffer
-
-
-		device = NULL;
-
-		//Put device ref into device var
-		hr = deviceCollection->Item(i, &device);
-		if (FAILED(hr))
-		{
-			printf("Unable to retrieve device %d: %x\n", i, hr);
-			goto Exit;
-		}
-
-
-		//This is the Core Audio interface of interest
-		IAudioEndpointVolume *endpointVolume = NULL;
-
-		//We activate it here
-		hr = device->Activate( __uuidof(IAudioEndpointVolume), CLSCTX_INPROC_SERVER, NULL, 
-			                   reinterpret_cast<void **>(&endpointVolume) );
-		if (FAILED(hr))
-		{
-			printf("Unable to activate endpoint volume on output device: %x\n", hr);
-			goto Exit;
-		}
-
-		BOOL mute;
-		hr = endpointVolume->GetMute(&mute); // Get Mute Status
-		if (FAILED(hr))
+		case WM_RBUTTONDOWN: 
 			{
-				printf("Unable to get mute state on endpoint: %x\n", hr);
-				goto Exit;
+				GetCursorPos(&lpClickPoint);
+				hPopMenu = CreatePopupMenu();				
+				if ( bDisable == TRUE )
+				{
+					InsertMenu(hPopMenu,0xFFFFFFFF,MF_BYPOSITION|MF_STRING,(UINT)1,_T("Enable"));									
+				}
+				else 
+				{
+					InsertMenu(hPopMenu,0xFFFFFFFF,MF_BYPOSITION|MF_STRING,(UINT)2,_T("Disable"));				
+				}
+				InsertMenu(hPopMenu,0xFFFFFFFF,MF_SEPARATOR,(UINT)"SEP",_T("SEP"));				
+				InsertMenu(hPopMenu,0xFFFFFFFF,MF_BYPOSITION|MF_STRING,(UINT)3,_T("Exit"));
+									
+				SetForegroundWindow(hWnd);
+				TrackPopupMenu(hPopMenu,TPM_LEFTALIGN|TPM_LEFTBUTTON|TPM_BOTTOMALIGN,lpClickPoint.x, lpClickPoint.y,0,hWnd,NULL);
+				return TRUE; 
 			}
-
-		if(mute)
+			break;
+		default:
+			return DefWindowProc(hWnd, message, wParam, lParam);
+		 }
+	case WM_COMMAND:
+	{
+		wmId    = LOWORD(wParam);
+		wmEvent = HIWORD(wParam);
+		switch (wmId)
 		{
-			hr = endpointVolume->SetMute(FALSE, NULL); //Try to unmute endpoint here
-			if (FAILED(hr))
-			{
-				printf("Unable to set unmute state on endpoint: %x\n", hr);
-				goto Exit;
-			}
-			else
-				printf("Endpoint unmuted successfully!\n");
-			PlaySound(MAKEINTRESOURCE(IDR_ON),GetModuleHandle(NULL),SND_RESOURCE);
-		}
-		else
-		{
-			hr = endpointVolume->SetMute(TRUE, NULL); //Try to mute endpoint here
-			if (FAILED(hr))
-			{
-				printf("Unable to set mute state on endpoint: %x\n", hr);
-				goto Exit;
-			}
-			else
-				printf("Endpoint muted successfully!\n");
-			PlaySound(MAKEINTRESOURCE(IDR_OFF),GetModuleHandle(NULL),SND_RESOURCE);
-		}
-    }
 
+			case (UINT)1:
+				{
+					mute_endpoint();
+					bDisable=FALSE;
+					PlaySound(MAKEINTRESOURCE(IDR_ON),GetModuleHandle(NULL),SND_RESOURCE); 
+				}
+				break;
+			case (UINT)2:
+				{
+					mute_endpoint();
+					bDisable=TRUE;
+					PlaySound(MAKEINTRESOURCE(IDR_OFF),GetModuleHandle(NULL),SND_RESOURCE);
+				}
+				break;
+			case (UINT)3:
+				Shell_NotifyIcon(NIM_DELETE,&nid);
+				DestroyWindow(hWnd);
+				PostQuitMessage(0);
+				break;
+			default:
+				return DefWindowProc(hWnd, message, wParam, lParam);
+		}
+	}
+	break;
 
-Exit: //Core Audio and COM clean up here
-    SafeRelease(&deviceCollection);
-    SafeRelease(&deviceEnumerator);
-    SafeRelease(&device);
-    CoUninitialize();
-	getchar();
-    return 0;
+	default:
+		return DefWindowProc(hWnd, message, wParam, lParam);
+	}
+	return 0;
 }
