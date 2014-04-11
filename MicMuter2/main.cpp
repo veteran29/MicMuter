@@ -26,7 +26,7 @@ INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
-	#ifdef _DEBUG
+	#ifdef DEBUG
 	//console for debbuging
 		AllocConsole();
 
@@ -44,6 +44,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	#endif
 
 
+	if(initialize_DeviceCollection()!=0)
+		EXIT_FAILURE;
 
 	MSG msg;
 
@@ -175,6 +177,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				}
 				break;
 			case (UINT)3:
+				SafeRelease(&deviceCollection);
+				CoUninitialize();
 				Shell_NotifyIcon(NIM_DELETE,&nid);
 				DestroyWindow(hWnd);
 				PostQuitMessage(0);

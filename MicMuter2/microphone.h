@@ -1,5 +1,5 @@
-//#define _DEBUG
-#ifdef _DEBUG
+#define DEBUG
+#ifdef DEBUG
 	#include <io.h>
 	#include <fcntl.h>
 #endif
@@ -13,7 +13,12 @@
 #include <EndpointVolume.h>
 //
 const wchar_t *mute_it=L"Microphone";
+IMMDeviceCollection *deviceCollection = NULL;
+UINT deviceCount;
 //
+
+int mute_captureDevice(IAudioEndpointVolume *endpointVolume);
+int unmute_captureDevice(IAudioEndpointVolume *endpointVolume);
 
 //  Retrieves the device friendly name for device in a device collection
 LPWSTR GetDeviceName(IMMDeviceCollection *DeviceCollection, UINT DeviceIndex)
@@ -75,15 +80,13 @@ LPWSTR GetDeviceName(IMMDeviceCollection *DeviceCollection, UINT DeviceIndex)
     return returnValue;
 }
 
-
-int mute_endpoint()
+int initialize_DeviceCollection()
 {
-
-    HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
     if (FAILED(hr))
     {
         printf("Unable to initialize COM: %x\n", hr);
-        goto Exit;
+		return 1;
     }
 
     IMMDeviceEnumerator *deviceEnumerator = NULL;
@@ -94,7 +97,7 @@ int mute_endpoint()
     if (FAILED(hr))
     {
         printf("Unable to instantiate device enumerator: %x\n", hr);
-        goto Exit;
+        return 1;
     }
 
 
@@ -108,19 +111,25 @@ int mute_endpoint()
     if (FAILED(hr))
     {
         printf("Unable to retrieve device collection: %x\n", hr);
-        goto Exit;
+        return 1;
     }
-
-
-    UINT deviceCount;
-
+	
     hr = deviceCollection->GetCount(&deviceCount);
     if (FAILED(hr))
     {
         printf("Unable to get device collection length: %x\n", hr);
-        goto Exit;
+        return 1;
     }
 
+	::deviceCollection=deviceCollection;
+	printf("Initialization of device collection finished: %X\n",hr);
+	SafeRelease(&deviceEnumerator);
+	return 0;
+}
+
+int mute_endpoint()
+{
+	HRESULT hr;
 
 	IMMDevice *device = NULL;
 	
@@ -132,18 +141,16 @@ int mute_endpoint()
     {
 		LPWSTR deviceName;
 
-		//Here we use the GetDeviceName() function provided with the sample 
-		//(see source code zip)
 		deviceName = GetDeviceName(deviceCollection, i); //Get device friendly name
 
 		if (deviceName == NULL) goto Exit;
 		if ( wcscmp(deviceName, mute_it) != 1 )
 		{
-			printf("Skipped device has index: %d and name: %S\n", i, deviceName);
+			printf("Skipped device has index: %d and name: %S\n\n", i, deviceName);
 			continue;
 		}
 		
-		printf("Device to be muted has index: %d and name: %S\n", i, deviceName);
+		printf("Device to be muted has index: %d and name: %S\n\n", i, deviceName);
 
 		free(deviceName); //this needs to be done because name is stored in a heap allocated buffer
 
@@ -180,35 +187,38 @@ int mute_endpoint()
 			}
 
 		if(mute)
-		{
-			hr = endpointVolume->SetMute(FALSE, NULL); //Try to unmute endpoint here
-			if (FAILED(hr))
-			{
-				printf("Unable to set unmute state on endpoint: %x\n", hr);
-				goto Exit;
-			}
-			else
-				printf("Endpoint unmuted successfully!\n");
-		}
+			mute_captureDevice(endpointVolume);
 		else
-		{
-			hr = endpointVolume->SetMute(TRUE, NULL); //Try to mute endpoint here
-			if (FAILED(hr))
-			{
-				printf("Unable to set mute state on endpoint: %x\n", hr);
-				goto Exit;
-			}
-			else
-				printf("Endpoint muted successfully!\n");
-		}
+			unmute_captureDevice(endpointVolume);
     }
 
 
 Exit: //Core Audio and COM clean up here
-    SafeRelease(&deviceCollection);
-    SafeRelease(&deviceEnumerator);
+	printf("Safe relasing\n");
     SafeRelease(&device);
-    CoUninitialize();
-	getchar();
     return 0;
+}
+
+int unmute_captureDevice(IAudioEndpointVolume *endpointVolume)
+{
+	HRESULT hr = endpointVolume->SetMute(TRUE, NULL); //Try to mute endpoint here
+			if (FAILED(hr))
+			{
+				printf("Unable to set mute state on endpoint: %x\n", hr);
+			}
+			else
+				printf("Endpoint muted successfully!\n");
+			return 0;
+}
+
+int mute_captureDevice(IAudioEndpointVolume *endpointVolume)
+{
+	HRESULT hr = endpointVolume->SetMute(FALSE, NULL); //Try to unmute endpoint here
+	if (FAILED(hr))
+	{
+		printf("Unable to set unmute state on endpoint: %x\n", hr);
+	}
+	else
+		printf("Endpoint unmuted successfully!\n");
+	return 0;
 }
