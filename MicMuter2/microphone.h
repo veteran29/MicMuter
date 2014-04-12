@@ -1,23 +1,6 @@
-#ifdef _DEBUG
-	#include <io.h>
-	#include <fcntl.h>
-// memory leak detection stuff
-	#define _CRTDBG_MAP_ALLOC
-	#include <stdlib.h>
-	#include <crtdbg.h>
-	#ifndef DBG_NEW
-		#define DBG_NEW new ( _NORMAL_BLOCK , __FILE__ , __LINE__ )      
-		#define new DBG_NEW   
-	#endif
-#endif
 
-#include "resource.h"
 #include "stdafx.h"
 
-#include <string>
-#include <iostream>
-#include <functiondiscoverykeys.h>
-#include <EndpointVolume.h>
 //
 const wchar_t *mute_it=L"Microphone";
 IMMDeviceCollection *deviceCollection = NULL;

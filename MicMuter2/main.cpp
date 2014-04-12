@@ -1,9 +1,19 @@
-#include <windows.h>
-#include <shellapi.h>
-#include <stdlib.h>
-#include <string.h>
-#include <tchar.h>
+#ifdef _DEBUG
+// headers for console
+	#include <io.h>
+	#include <fcntl.h>
+// memory leak detection stuff
+	#define _CRTDBG_MAP_ALLOC
+	#include <stdlib.h>
+	#include <crtdbg.h>
+	#ifndef DBG_NEW
+		#define DBG_NEW new ( _NORMAL_BLOCK , __FILE__ , __LINE__ )      
+		#define new DBG_NEW   
+	#endif
+#endif
 
+#include "stdafx.h"
+#include "resource.h"
 #include "microphone.h"
 
 #define MAX 100
@@ -47,7 +57,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 
 	if(initialize_DeviceCollection()!=0)
-		EXIT_FAILURE;
+		exit(1);
 
 	MSG msg;
 
