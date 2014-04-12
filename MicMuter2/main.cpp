@@ -26,7 +26,7 @@ INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
-	#ifdef DEBUG
+	#ifdef _DEBUG
 	//console for debbuging
 		AllocConsole();
 
@@ -41,6 +41,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		FILE* hf_in = _fdopen(hCrt, "r");
 		setvbuf(hf_in, NULL, _IONBF, 128);
 		*stdin = *hf_in;
+
+		SetConsoleTitle(L"Debug Output of Micmuter");
 	#endif
 
 
@@ -62,6 +64,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
+	#ifdef _DEBUG
+		_CrtSetReportMode( _CRT_ERROR, _CRTDBG_MODE_DEBUG );
+		_CrtDumpMemoryLeaks();
+	#endif
+
     return (int) msg.wParam;
 }
 

@@ -1,7 +1,14 @@
-#define DEBUG
-#ifdef DEBUG
+#ifdef _DEBUG
 	#include <io.h>
 	#include <fcntl.h>
+// memory leak detection stuff
+	#define _CRTDBG_MAP_ALLOC
+	#include <stdlib.h>
+	#include <crtdbg.h>
+	#ifndef DBG_NEW
+		#define DBG_NEW new ( _NORMAL_BLOCK , __FILE__ , __LINE__ )      
+		#define new DBG_NEW   
+	#endif
 #endif
 
 #include "resource.h"
@@ -77,6 +84,7 @@ LPWSTR GetDeviceName(IMMDeviceCollection *DeviceCollection, UINT DeviceIndex)
         printf("Unable to allocate buffer for return\n");
         return NULL;
     }
+
     return returnValue;
 }
 
@@ -147,11 +155,11 @@ int mute_endpoint()
 		if ( wcscmp(deviceName, mute_it) != 1 )
 		{
 			printf("Skipped device has index: %d and name: %S\n\n", i, deviceName);
+			free(deviceName);
 			continue;
 		}
 		
 		printf("Device to be muted has index: %d and name: %S\n\n", i, deviceName);
-
 		free(deviceName); //this needs to be done because name is stored in a heap allocated buffer
 
 
