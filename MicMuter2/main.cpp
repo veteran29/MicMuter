@@ -14,7 +14,7 @@
 
 #include "stdafx.h"
 #include "resource.h"
-#include "microphone.h"
+#include "EndpointManagement.h"
 
 #define MAX 100
 #define	WM_USER_SHELLICON WM_USER + 1
@@ -34,6 +34,9 @@ BOOL				InitInstance(HINSTANCE, int);
 LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 
+//
+EndpointManage *endpointHandler;
+//
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
 	#ifdef _DEBUG
@@ -53,11 +56,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		*stdin = *hf_in;
 
 		SetConsoleTitle(L"Debug Output of Micmuter");
+
+		_CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
 	#endif
 
-
-	if(initialize_DeviceCollection()!=0)
-		exit(1);
+	endpointHandler= new EndpointManage;
 
 	MSG msg;
 
@@ -74,11 +77,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
-	#ifdef _DEBUG
-		_CrtSetReportMode( _CRT_ERROR, _CRTDBG_MODE_DEBUG );
-		_CrtDumpMemoryLeaks();
-	#endif
-
+	delete endpointHandler;
     return (int) msg.wParam;
 }
 
@@ -181,20 +180,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 			case (UINT)1:
 				{
-					mute_endpoint();
+					endpointHandler->mute_Endpoint();
 					bDisable=FALSE;
 					PlaySound(MAKEINTRESOURCE(IDR_ON),GetModuleHandle(NULL),SND_RESOURCE); 
 				}
 				break;
 			case (UINT)2:
 				{
-					mute_endpoint();
+					endpointHandler->mute_Endpoint();
 					bDisable=TRUE;
 					PlaySound(MAKEINTRESOURCE(IDR_OFF),GetModuleHandle(NULL),SND_RESOURCE);
 				}
 				break;
 			case (UINT)3:
-				SafeRelease(&deviceCollection);
 				CoUninitialize();
 				Shell_NotifyIcon(NIM_DELETE,&nid);
 				DestroyWindow(hWnd);

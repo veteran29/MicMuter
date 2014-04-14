@@ -26,9 +26,6 @@
     <ClInclude Include="stdafx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="microphone.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="EndpointManagement.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -38,9 +35,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="stdafx.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="EndpointManagement.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
